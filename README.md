@@ -71,6 +71,10 @@ python -m src.evaluate --mode dqn --episodes 2000 --epsilon_start 1.0 --epsilon_
 **Scoring Formula:**
 `Final Score = (SuccessRate × 2000) − (Wrong × 5) − (Repeated × 2)`
 
+> **⚠️ Note:** If success rate is used as a fraction (e.g., `0.32` instead of `32`), the score calculation changes:  
+> `0.32 × 2000 = 640` → `Final Score = 640 − 52,385 = −51,745`  
+> The table above uses **percentage form** (e.g., `95` for 95%) for scoring.
+
 ---
 
 ## 🧠 Notebooks (Step-by-Step Demo)
