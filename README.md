@@ -1,102 +1,67 @@
-# 🧠 Intelligent Hangman — HMM + DQN Hybrid AI
+# Intelligent Hangman
 
-> An AI that plays **Hangman intelligently** using probabilistic modeling (HMM) and reinforcement learning (DQN).  
-> It learns contextual letter patterns from a 50,000-word corpus to guess words with minimal mistakes.
+An AI that learns to play Hangman by modeling letter patterns in English words. I combined an HMM (to learn which letters follow each other) with a simple greedy agent and an optional DQN to see if reinforcement learning could improve performance. Spoiler: the HMM approach completely dominated.
 
----
+## The Idea
 
-## 🚀 Overview
-This project builds an **Intelligent Hangman Assistant** that:
-- Learns **letter sequences** using a *Hidden Markov Model (HMM)*.
-- Plays efficiently using a **Greedy Baseline Agent** guided by probability.
-- Optionally trains a **Deep Q-Network (DQN)** agent that learns an optimal guessing policy through rewards.
+Most Hangman AIs just guess the most frequent letters. This one tries to be smarter by learning that certain letters follow each other. For example, if you see `_ING`, it knows a `T` is likely nearby because `TING`, `LING`, `RING`, etc. are common.
 
-🎯 **Goal:** Maximize success rate while minimizing wrong and repeated guesses.
+I built two approaches:
+- **HMM + Greedy**: Uses a probabilistic model trained on 50k words to pick the best letter each turn
+- **DQN**: A reinforcement learning agent trained to pick actions (letter guesses) based on game state
 
----
+The HMM approach achieved 95% win rate. The DQN... didn't work as well (see results below).
 
-## ⚙️ Setup
+## Setup
 
 ```bash
-# 1. Create and activate virtual environment
 python -m venv .venv
-.\.venv\Scripts\activate         # (Windows)
-# source .venv/bin/activate      # (Mac/Linux)
+.\.venv\Scripts\activate         # Windows
+# source .venv/bin/activate      # Mac/Linux
 
-# 2. Install dependencies
 pip install -r requirements.txt
-
-# 3. Add dataset
-# Place corpus.txt and test_words.txt inside the data/ folder
 ```
 
----
+Then add your datasets to the `data/` folder:
+- `corpus.txt` — Training words for the HMM
+- `test_words.txt` — Words to test on
 
-## 🧩 Run Baseline (HMM + Greedy Agent)
+## Running It
 
+**HMM baseline (what actually works):**
 ```bash
 python -m src.evaluate --mode baseline --n_games 1000 --lives 6 --seed 42 --outdir plots --data_dir data
 ```
 
-**Outputs**
+Outputs a CSV with results, plots, and a PDF report.
 
-* 📊 `data/baseline_results.csv`
-* 🖼️ Plots in `plots/`
-* 📄 Report → `Analysis_Report.pdf`
-
----
-
-## 🤖 Train DQN (Optional Reinforcement Learning Agent)
-
+**DQN training (optional, experimental):**
 ```bash
 python -m src.evaluate --mode dqn --episodes 2000 --epsilon_start 1.0 --epsilon_end 0.05 --epsilon_decay 0.995 --seed 42 --outdir plots --data_dir data
 ```
 
-**Outputs**
+## Results
 
-* 🧮 `data/dqn_results.csv`
-* 🧠 `data/dqn_agent.pth`
-* 📉 Training curves in `plots/`
-* 📘 Summary → `DQN_Summary_Report.pdf`
+The HMM approach crushed it. The DQN... didn't.
 
----
+| Model | Win Rate | Wrong Guesses | Score |
+|-------|----------|---------------|-------|
+| HMM + Greedy | 95% | 3,956 | 170,220 |
+| DQN (2000 episodes) | 11.15% | 11,672 | −36,060 |
 
-## 📈 Example Metrics
+The scoring formula is: `(Win% × 2000) − (Wrong × 5) − (Repeated × 2)`
 
-| Model                | Success Rate | Wrong Guesses | Repeated | Final Score |
-| -------------------- | ------------ | ------------- | -------- | ----------- |
-| HMM + Greedy         | **95.0%**    | 3956          | 0        | **170,220** |
-| DQN Agent (2000 ep.) | 11.15%       | 11,672        | 0        | −36,060     |
+I think the DQN struggled because the state space is huge (you need to track which letters have been guessed, the current pattern, remaining lives, etc.) and I didn't have enough training time or a good reward structure. The HMM's simplicity was actually its strength—it just learned the underlying patterns in English text.
 
-**Scoring Formula:**
-`Final Score = (SuccessRate × 2000) − (Wrong × 5) − (Repeated × 2)`
+## What's in Here
 
-> **⚠️ Note:** If success rate is used as a fraction (e.g., `0.32` instead of `32`), the score calculation changes:  
-> `0.32 × 2000 = 640` → `Final Score = 640 − 52,385 = −51,745`  
-> The table above uses **percentage form** (e.g., `95` for 95%) for scoring.
+- `src/hmm_oracle.py` — The HMM model that learns letter transitions
+- `src/baseline_greedy.py` — Simple greedy agent that uses HMM probabilities
+- `src/dqn_agent.py` — PyTorch DQN implementation (experimental)
+- `src/hangman_env.py` — Game environment
+- `notebooks/` — Step-by-step walkthroughs if you want to understand the approach
 
----
-
-## 🧠 Notebooks (Step-by-Step Demo)
-
-| Notebook | Description |
-|-----------|--------------|
-| 🧾 01_data_and_hmm.ipynb | Data loading & HMM oracle training |
-| 🧩 02_baseline_greedy.ipynb | Baseline agent evaluation |
-| ⚡ 03_train_dqn.ipynb | DQN training and performance plots |
-| 📊 04_generate_report.ipynb | Generates analysis & comparison reports |
-
----
-
-## 🧭 Import Usage (APIs)
-
-```python
-from src import HMMOracle, HangmanEnv, DQNAgent
-```
-
----
-
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 intelligent_hangman/
@@ -116,22 +81,25 @@ intelligent_hangman/
 │   ├── 03_train_dqn.ipynb
 │   └── 04_generate_report.ipynb
 ├── plots/
-├── Analysis_Report.pdf
 └── README.md
+```
+
+## Key Takeaway
+
+This was a good lesson in not over-engineering. A probabilistic model trained on real data outperformed a learned policy by a huge margin. Sometimes the simpler approach that understands your domain (English letter frequencies) beats something more complex (DQN) that needs way more tuning and data.
+
+## Using It As a Library
+
+```python
+from src import HMMOracle, HangmanEnv, DQNAgent
+
+oracle = HMMOracle(corpus_file="data/corpus.txt")
+env = HangmanEnv(word_list="data/test_words.txt")
+
+# Get best guess
+next_letter = oracle.predict(current_pattern, guessed_letters)
 ```
 
 ---
 
-## 💡 Insights
-
-* The **HMM Bigram Model** captures English letter-to-letter dependencies.
-* The **DQN Agent** learns through rewards to minimize mistakes and solve faster.
-* Together, they blend **probabilistic reasoning** with **strategic decision-making**.
-
----
-
-## 👥 Credits
-
-**Developed by:** Swapnil Kumar  
-**For:** *Intelligent Hangman Challenge*  
-**Domain:** Machine Learning • Probabilistic Reasoning • Reinforcement Learning
+Built to explore probabilistic modeling and RL on a fun problem.
